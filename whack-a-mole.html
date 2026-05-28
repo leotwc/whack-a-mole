@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Whack-a-Mole — Free Online Game</title>
+<meta name="description" content="Play Whack-a-Mole free online! Fast, fun browser game. No download needed. Beat your high score!"/>
+
+<!-- =====================================================
+     GOOGLE ADSENSE — replace with your publisher ID
+     Sign up at: https://adsense.google.com
+     Then replace: ca-pub-XXXXXXXXXXXXXXXXX
+     ===================================================== -->
+<!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f2;
+    --surface: #eeecea;
+    --surface2: #e5e3df;
+    --text: #1a1a18;
+    --muted: #888780;
+    --border: rgba(26,26,24,0.1);
+    --border-md: rgba(26,26,24,0.2);
+    --warn-bg: #faeeda;
+    --warn-border: rgba(186,117,23,0.3);
+    --danger-bg: #fcebeb;
+    --danger-border: rgba(226,75,74,0.3);
+    --radius: 12px;
+    --radius-pill: 40px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18181a;
+      --surface: #222224;
+      --surface2: #2a2a2c;
+      --text: #f0ede8;
+      --muted: #7a7875;
+      --border: rgba(240,237,232,0.08);
+      --border-md: rgba(240,237,232,0.18);
+      --warn-bg: #2a2010;
+      --warn-border: rgba(186,117,23,0.4);
+      --danger-bg: #2a1010;
+      --danger-border: rgba(226,75,74,0.4);
+    }
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* Layout */
+  .page { display: flex; flex-direction: column; align-items: center; padding: 1.5rem 1rem 3rem; }
+  .inner { width: 100%; max-width: 480px; }
+
+  /* Ad slots */
+  .ad-top { width: 100%; max-width: 728px; margin: 0 auto 1.5rem; text-align: center; }
+  .ad-bottom { width: 100%; max-width: 728px; margin: 2rem auto 0; text-align: center; }
+  .ad-placeholder {
+    background: var(--surface);
+    border: 1px dashed var(--border-md);
+    border-radius: var(--radius);
+    padding: 20px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 1.5rem; }
+  header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  header p { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+  /* HUD */
+  .hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .hud-card { background: var(--surface); border-radius: var(--radius); padding: 12px 8px; text-align: center; }
+  .hud-val { font-size: 24px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .hud-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; letter-spacing: 1.5px; text-transform: uppercase; }
+
+  /* Difficulty */
+  .diff { display: flex; gap: 8px; justify-content: center; margin-bottom: 1.25rem; }
+  .diff-btn {
+    font-size: 13px; font-weight: 500;
+    padding: 6px 18px; border-radius: 20px;
+    border: 1px solid var(--border-md);
+    background: transparent; color: var(--muted);
+    cursor: pointer; transition: all .15s;
+  }
+  .diff-btn:hover { color: var(--text); border-color: var(--text); }
+  .diff-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* Game grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 1.25rem;
+  }
+  .hole {
+    aspect-ratio: 1;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px;
+    transition: transform .1s, background .15s;
+    user-select: none;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hole:active { transform: scale(0.91); }
+  .hole.active { background: var(--warn-bg); border-color: var(--warn-border); }
+  .hole.bonk { background: var(--danger-bg); border-color: var(--danger-border); }
+
+  .mole { display: inline-block; transition: transform .15s, opacity .15s; }
+  .hole:not(.active):not(.bonk) .mole { transform: translateY(64px); opacity: 0; }
+  .hole.active .mole { transform: translateY(0); opacity: 1; }
+  .hole.bonk .mole { transform: scale(0.65) rotate(-25deg); opacity: 0.6; }
+
+  /* Message */
+  .msg { font-size: 14px; color: var(--muted); text-align: center; min-height: 22px; margin-bottom: 1rem; }
+
+  /* Buttons */
+  .controls { display: flex; gap: 10px; justify-content: center; }
+  .btn {
+    font-size: 15px; font-weight: 600;
+    padding: 12px 40px; border-radius: var(--radius-pill);
+    border: 2px solid var(--text);
+    background: var(--text); color: var(--bg);
+    cursor: pointer; transition: opacity .15s;
+  }
+  .btn:hover { opacity: .82; }
+  .btn:active { transform: scale(0.97); }
+
+  /* Game over overlay */
+  .overlay {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border-md);
+    border-radius: var(--radius);
+    padding: 2rem 1.5rem;
+    text-align: center;
+    margin-bottom: 1.25rem;
+  }
+  .overlay.show { display: block; }
+  .overlay h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .overlay .final-score { font-size: 52px; font-weight: 700; margin: 0.5rem 0; }
+  .overlay p { font-size: 14px; color: var(--muted); margin-bottom: 1.5rem; }
+
+  /* Footer */
+  footer { margin-top: 3rem; text-align: center; font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 420px) {
+    .hole { font-size: 38px; }
+    header h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- TOP AD SLOT -->
+  <div class="ad-top">
+    <!-- REPLACE THIS WITH YOUR ADSENSE CODE after approval -->
+    <div class="ad-placeholder">Ad slot — replace with AdSense code after approval</div>
+    <!--
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-XXXXXXXXXXXXXXXXX"
+         data-ad-slot="XXXXXXXXXX"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    -->
+  </div>
+
+  <div class="inner">
+    <header>
+      <h1>Whack-a-Mole</h1>
+      <p>30 seconds. How many can you whack?</p>
+    </header>
+
+    <div class="hud">
+      <div class="hud-card"><div class="hud-val" id="score">0</div><div class="hud-lbl">Score</div></div>
+      <div class="hud-card"><div class="hud-val" id="timer">30</div><div class="hud-lbl">Time</div></div>
+      <div class="hud-card"><div class="hud-val" id="best">0</div><div class="hud-lbl">Best</div></div>
+    </div>
+
+    <div class="diff">
+      <button class="diff-btn active" data-speed="900">Easy</button>
+      <button class="diff-btn" data-speed="600">Medium</button>
+      <button class="diff-btn" data-speed="350">Hard</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="overlay" id="overlay">
+      <h2 id="overlay-title">Time's up!</h2>
+      <div class="final-score" id="final-score">0</div>
+      <p id="overlay-msg">moles whacked</p>
+      <button class="btn" onclick="startGame()">Play again</button>
+    </div>
+
+    <div class="msg" id="msg">Tap a mole — or press Start!</div>
+
+    <div class="controls">
+      <button class="btn" id="startBtn">Start game</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM AD SLOT -->
+  <div class="ad-bottom">
+    <!-- REPLACE THIS WITH YOUR ADSENSE CODE after approval -->
+    <div class="ad-placeholder">Ad slot — replace with AdSense code after approval</div>
+    <!--
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-XXXXXXXXXXXXXXXXX"
+         data-ad-slot="XXXXXXXXXX"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    -->
+  </div>
+
+  <footer>
+    Built with HTML &amp; JavaScript · Free to play · No download needed
+  </footer>
+
+</div>
+
+<script>
+  const HOLES = 9;
+  const grid = document.getElementById('grid');
+  const scoreEl = document.getElementById('score');
+  const timerEl = document.getElementById('timer');
+  const bestEl = document.getElementById('best');
+  const msgEl = document.getElementById('msg');
+  const startBtn = document.getElementById('startBtn');
+  const overlay = document.getElementById('overlay');
+  const finalScore = document.getElementById('final-score');
+  const overlayMsg = document.getElementById('overlay-msg');
+  const overlayTitle = document.getElementById('overlay-title');
+
+  let holes = [], score = 0, best = 0, timeLeft = 30;
+  let gameActive = false, moleTimer = null, countdown = null;
+  let speed = 900, activeMole = -1;
+
+  for (let i = 0; i < HOLES; i++) {
+    const h = document.createElement('div');
+    h.className = 'hole';
+    h.innerHTML = '<span class="mole">🦔</span>';
+    h.dataset.i = i;
+    h.addEventListener('click', () => whack(i));
+    grid.appendChild(h);
+    holes.push(h);
+  }
+
+  document.querySelectorAll('.diff-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      if (gameActive) return;
+      document.querySelectorAll('.diff-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      speed = parseInt(b.dataset.speed);
+    });
+  });
+
+  function whack(i) {
+    if (!gameActive) { startGame(); return; }
+    if (i === activeMole) {
+      score++;
+      scoreEl.textContent = score;
+      holes[i].classList.remove('active');
+      holes[i].classList.add('bonk');
+      setTimeout(() => holes[i].classList.remove('bonk'), 220);
+      activeMole = -1;
+      clearTimeout(moleTimer);
+      showMole();
+      if (score % 5 === 0) msgEl.textContent = score + ' hits — keep going!';
+      else msgEl.textContent = ['Nice!', 'Gotcha!', 'Whack!', 'Hit!'][Math.floor(Math.random() * 4)];
+    }
+  }
+
+  function showMole() {
+    if (!gameActive) return;
+    let next;
+    do { next = Math.floor(Math.random() * HOLES); } while (next === activeMole);
+    if (activeMole !== -1) holes[activeMole].classList.remove('active');
+    activeMole = next;
+    holes[activeMole].classList.add('active');
+    moleTimer = setTimeout(() => {
+      if (activeMole !== -1) { holes[activeMole].classList.remove('active'); activeMole = -1; }
+      showMole();
+    }, speed);
+  }
+
+  function startGame() {
+    if (gameActive) { endGame(true); return; }
+    score = 0; timeLeft = 30; gameActive = true;
+    scoreEl.textContent = 0; timerEl.textContent = 30;
+    overlay.classList.remove('show');
+    startBtn.textContent = 'Restart';
+    msgEl.textContent = 'Whack the moles!';
+    showMole();
+    countdown = setInterval(() => {
+      timeLeft--;
+      timerEl.textContent = timeLeft;
+      if (timeLeft <= 5) msgEl.textContent = timeLeft + ' seconds left!';
+      if (timeLeft <= 0) endGame(false);
+    }, 1000);
+  }
+
+  function endGame(restarting) {
+    gameActive = false;
+    clearInterval(countdown);
+    clearTimeout(moleTimer);
+    if (activeMole !== -1) { holes[activeMole].classList.remove('active'); activeMole = -1; }
+    if (!restarting) {
+      if (score > best) { best = score; bestEl.textContent = best; }
+      finalScore.textContent = score;
+      overlayTitle.textContent = score >= 20 ? 'Incredible!' : score >= 10 ? 'Great job!' : 'Time\'s up!';
+      overlayMsg.textContent = score === 1 ? 'mole whacked' : 'moles whacked';
+      overlay.classList.add('show');
+      msgEl.textContent = '';
+    }
+    startBtn.textContent = 'Start game';
+  }
+
+  startBtn.addEventListener('click', () => {
+    if (gameActive) { endGame(true); setTimeout(startGame, 50); }
+    else startGame();
+  });
+</script>
+</body>
+</html>
